@@ -1,4 +1,10 @@
+parameters:
+    hacfi_aws.event_listener.default_parameters_listener.class: "hacfi\AwsBundle\EventListener\DefaultParametersListener"
+
 services:
+    hacfi_aws.event_listener.default_parameters_listener:
+        class: "%hacfi_aws.event_listener.default_parameters_listener.class%"
+
     hacfi_aws.event_listener.resolve_parameters_listener:
         class: "hacfi\AwsBundle\EventListener\ResolveParametersListener"
         calls:

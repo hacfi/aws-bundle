@@ -7,6 +7,7 @@ use Symfony\Component\HttpKernel\Bundle\Bundle;
 
 use hacfi\AwsBundle\DependencyInjection\hacfiAwsExtension;
 
+
 class hacfiAwsBundle extends Bundle
 {
     private $configurationAlias;

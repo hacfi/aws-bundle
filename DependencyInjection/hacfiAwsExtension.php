@@ -1,5 +1,12 @@
 <?php
 
+/*
+ * (c) Philipp Wahala <philipp.wahala@gmail.com>
+ *
+ * For the full copyright and license information, please view the LICENSE
+ * file that was distributed with this source code.
+ */
+
 namespace hacfi\AwsBundle\DependencyInjection;
 
 use Symfony\Component\Config\FileLocator;
@@ -10,6 +17,7 @@ use Symfony\Component\DependencyInjection\Reference;
 use Symfony\Component\HttpKernel\DependencyInjection\ConfigurableExtension;
 
 use Aws\Common\Aws;
+
 
 class hacfiAwsExtension extends ConfigurableExtension
 {
@@ -54,42 +62,65 @@ class hacfiAwsExtension extends ConfigurableExtension
 
         $loader->load('services.yml');
 
-        foreach ($mergedConfig as $serviceId => $config) {
-            $this->createService($serviceId, $config, $container);
-        }
-    }
-
-    private function createService($serviceId, $config, $container)
-    {
-        $serviceClass = $this->getServiceClass($config['client']);
-
-        $definition = new Definition($serviceClass);
-
-        if ($config['client'] !== 'aws' && is_string($config['config'])) {
-            $awsClass = $this->getServiceClass('aws');
-            $factoryDefinition = new Definition($awsClass);
-            $factoryDefinition
-                ->setFactory([$awsClass, 'factory'])
-                ->setArguments([$config['config']])
-            ;
-            $container->setDefinition($serviceId.'_factory', $factoryDefinition);
-
-            $definition
-                ->setFactory([new Reference($serviceId.'_factory'), 'get'])
-                ->setArguments([$config['client']])
-            ;
-        } else {
-            $definition
-                ->setFactory([$serviceClass, 'factory'])
-                ->setArguments([$config['config']])
+        if ($mergedConfig['default_parameters_file']) {
+            $container
+                ->getDefinition('hacfi_aws.event_listener.default_parameters_listener')
+                ->addMethodCall('setParametersFile', [$mergedConfig['default_parameters_file']])
             ;
         }
 
-        if ($config['resolve_parameters']) {
-            $definition->addMethodCall('addSubscriber', [new Reference('hacfi_aws.event_listener.resolve_parameters_listener')]);
-        }
+        foreach ($mergedConfig['services'] as $serviceId => $config) {
+            foreach (['config', 'resolve_parameters'] as $configKey) {
+                if (!isset($config[$configKey])) {
+                    $config[$configKey] = $mergedConfig[$configKey];
+                }
+            }
 
-        $container->setDefinition($serviceId, $definition);
+            $serviceClass = $this->getServiceClass($config['client']);
+
+            $definition = new Definition($serviceClass);
+
+            if ($config['client'] !== 'aws' && is_string($config['config'])) {
+                $awsClass = $this->getServiceClass('aws');
+                $factoryDefinition = new Definition($awsClass);
+                $factoryDefinition
+                    ->setFactory([$awsClass, 'factory'])
+                    ->setArguments([$config['config']])
+                ;
+                $container->setDefinition($serviceId.'_factory', $factoryDefinition);
+
+                $definition
+                    ->setFactory([new Reference($serviceId.'_factory'), 'get'])
+                    ->setArguments([$config['client']])
+                ;
+            } else {
+                $definition
+                    ->setFactory([$serviceClass, 'factory'])
+                    ->setArguments([$config['config']])
+                ;
+            }
+
+            if ($config['resolve_parameters']) {
+                $definition->addMethodCall('addSubscriber', [new Reference('hacfi_aws.event_listener.resolve_parameters_listener')]);
+            }
+
+            if (isset($config['default_parameters_file']) && $config['default_parameters_file']) {
+                $listenerDefinition = new Definition($container->getParameter('hacfi_aws.event_listener.default_parameters_listener.class'));
+                $listenerDefinition
+                    ->setPublic(false)
+                    ->addMethodCall('setParametersFile', [$config['default_parameters_file']])
+                ;
+
+                $container->setDefinition($serviceId.'_listener', $listenerDefinition);
+
+                $definition->addMethodCall('addSubscriber', [new Reference($serviceId.'_listener')]);
+
+            } elseif ($mergedConfig['default_parameters_file']) {
+                $definition->addMethodCall('addSubscriber', [new Reference('hacfi_aws.event_listener.default_parameters_listener')]);
+            }
+
+            $container->setDefinition($serviceId, $definition);
+        }
     }
 
     private function getServiceClass($client)
