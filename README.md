@@ -18,7 +18,7 @@ app/config/config.yml
 
 ``` yml
 hacfi_aws:
-  services:
+    services:
         aws.s3:
             client: s3
             default_parameters_file: "%kernel.root_dir%/Resources/aws/defaults.yml"
@@ -79,7 +79,6 @@ hacfi_aws:
             client: cloudfront_20120505
         aws.cloudhsm:
             client: cloudhsm
-            config:
         aws.cloudsearch:
             client: cloudsearch
         aws.cloudsearch_20110201:
