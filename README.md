@@ -4,15 +4,26 @@
 ## Install
 
 
-```sh
+``` sh
 composer require "hacfi/aws-bundle":"dev-master"
 ```
 
+## Resolves request parameters with Symfony service parameters
+
+Example:
+
+``` php
+$buckets = $s3->listObjects([
+    'Bucket' => '%awesome_bucket%',
+]);
+```
+
+This feature can be disabled by setting the configuration option `resolve_parameters` of the client to `false`.
 
 ## Configuration
 
 
-```yml
+``` yml
 
 hacfi_aws:
     aws.aws:

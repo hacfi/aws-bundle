@@ -2,8 +2,10 @@
 
 namespace hacfi\AwsBundle\DependencyInjection;
 
+use Symfony\Component\Config\FileLocator;
 use Symfony\Component\DependencyInjection\Definition;
 use Symfony\Component\DependencyInjection\ContainerBuilder;
+use Symfony\Component\DependencyInjection\Loader\YamlFileLoader;
 use Symfony\Component\DependencyInjection\Reference;
 use Symfony\Component\HttpKernel\DependencyInjection\ConfigurableExtension;
 
@@ -48,6 +50,10 @@ class hacfiAwsExtension extends ConfigurableExtension
      */
     protected function loadInternal(array $mergedConfig, ContainerBuilder $container)
     {
+        $loader = new YamlFileLoader($container, new FileLocator(__DIR__ . '/../Resources/config'));
+
+        $loader->load('services.yml');
+
         foreach ($mergedConfig as $serviceId => $config) {
             $this->createService($serviceId, $config, $container);
         }
@@ -77,6 +83,10 @@ class hacfiAwsExtension extends ConfigurableExtension
                 ->setFactory([$serviceClass, 'factory'])
                 ->setArguments([$config['config']])
             ;
+        }
+
+        if ($config['resolve_parameters']) {
+            $definition->addMethodCall('addSubscriber', [new Reference('hacfi_aws.event_listener.resolve_parameters_listener')]);
         }
 
         $container->setDefinition($serviceId, $definition);

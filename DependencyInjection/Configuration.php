@@ -52,6 +52,9 @@ class Configuration implements ConfigurationInterface
                     ->variableNode('config')
                         ->defaultValue([])
                     ->end()
+                    ->booleanNode('resolve_parameters')
+                        ->defaultTrue()
+                    ->end()
                 ->end()
             ->end()
         ;
