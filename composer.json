@@ -1,0 +1,23 @@
+{
+    "name": "hacfi/aws-bundle",
+    "type": "symfony-bundle",
+    "description": "AWS SDK for PHP Bundle for Symfony",
+    "keywords": ["aws"],
+    "license": "MIT",
+    "authors": [
+        {
+            "name":"Philipp Wahala",
+            "email":"philipp.wahala@gmail.com"
+        }
+    ],
+    "require": {
+        "php": ">=5.4",
+        "symfony/framework-bundle": "~2.2",
+        "aws/aws-sdk-php": "2.*"
+    },
+    "autoload":{
+        "psr-4":{
+            "hacfi\\AwsBundle\\": ""
+        }
+    }
+}
