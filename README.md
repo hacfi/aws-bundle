@@ -10,7 +10,7 @@ composer require "hacfi/aws-bundle":"dev-master"
 
 ## Default parameters file
 
-This bundle allows you to specify a **default parameters file** so only have to specify dynamic parameters in your services.
+This bundle allows you to specify a **default parameters file** so you only have to specify dynamic parameters in your services.
 
 Example:
 
@@ -27,7 +27,7 @@ hacfi_aws:
 app/Resources/aws/defaults.yml
 ``` yml
 s3.ListObjects:
-    Bucket: ''lovely_bucket''
+    Bucket: 'lovely_bucket'
 ```
 
 ``` php
@@ -75,6 +75,7 @@ hacfi_aws:
                 secret: "%aws_secret%"
         aws.cloudfront:
             client: cloudfront
+            default_parameters_file: "%kernel.root_dir%/Resources/aws/cloudfront.yml"
         aws.cloudfront_20120505:
             client: cloudfront_20120505
         aws.cloudhsm:
