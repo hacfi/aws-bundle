@@ -1,4 +1,5 @@
 parameters:
+    hacfi_aws.client.aws_client.class: "hacfi\AwsBundle\Client\AwsClient"
     hacfi_aws.event_listener.default_parameters_listener.class: "hacfi\AwsBundle\EventListener\DefaultParametersListener"
 
 services:

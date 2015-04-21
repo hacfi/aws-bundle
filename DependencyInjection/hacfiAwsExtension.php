@@ -70,7 +70,7 @@ class hacfiAwsExtension extends ConfigurableExtension
         }
 
         foreach ($mergedConfig['services'] as $serviceId => $config) {
-            foreach (['config', 'resolve_parameters'] as $configKey) {
+            foreach (['config', 'proxy', 'resolve_parameters'] as $configKey) {
                 if (!isset($config[$configKey])) {
                     $config[$configKey] = $mergedConfig[$configKey];
                 }
@@ -117,6 +117,19 @@ class hacfiAwsExtension extends ConfigurableExtension
 
             } elseif ($mergedConfig['default_parameters_file']) {
                 $definition->addMethodCall('addSubscriber', [new Reference('hacfi_aws.event_listener.default_parameters_listener')]);
+            }
+
+            if ($config['proxy']) {
+                $definition->setPublic(false);
+
+                $wrapperDefinition = new Definition($container->getParameter('hacfi_aws.client.aws_client.class'));
+                $wrapperDefinition->addArgument(new Reference($serviceId.'_wrapped'));
+                $wrapperDefinition->addArgument($serviceId);
+                $wrapperDefinition->addArgument(new Reference('logger'));
+
+                $container->setDefinition($serviceId, $wrapperDefinition);
+
+                $serviceId .= '_wrapped';
             }
 
             $container->setDefinition($serviceId, $definition);
