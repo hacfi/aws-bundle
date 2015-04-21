@@ -20,12 +20,12 @@ class DefaultParametersListener implements EventSubscriberInterface
     /**
      * @var array
      */
-    var $parameters;
+    protected $parameters;
 
     /**
      * @var string
      */
-    var $parametersFile;
+    protected $parametersFile;
 
     /**
      * {@inheritdoc}
