@@ -12,22 +12,18 @@ namespace hacfi\AwsBundle\DependencyInjection;
 use Symfony\Component\Config\Definition\Builder\TreeBuilder;
 use Symfony\Component\Config\Definition\ConfigurationInterface;
 
-
 class Configuration implements ConfigurationInterface
 {
     private $alias;
-    private $awsConfig;
 
     /**
      * Constructor.
      *
      * @param string $alias
-     * @param array  $awsConfig
      */
-    public function __construct($alias, $awsConfig)
+    public function __construct($alias)
     {
         $this->alias = $alias;
-        $this->awsConfig = $awsConfig;
     }
 
     /**
@@ -37,22 +33,30 @@ class Configuration implements ConfigurationInterface
     {
         $treeBuilder = new TreeBuilder();
 
-        $services = array_keys(
-            array_filter(
-                $this->awsConfig,
-                function ($service) {
-                    return !empty($service['class']);
-                }
-            )
-        );
+        $services = ['aws'];
+        $availableVersions = [];
 
-        array_unshift($services, 'aws');
+        foreach (\Aws\manifest() as $key => $service) {
+            $services[] = $key;
+
+            foreach (array_keys($service['versions']) as $version) {
+                if (!in_array($version, $availableVersions)) {
+                    $availableVersions[] = $version;
+                }
+            }
+        }
 
         $treeBuilder
             ->root($this->alias)
             ->children()
                 ->variableNode('config')
                     ->defaultValue([])
+                ->end()
+                ->scalarNode('region')
+                    ->defaultValue('eu-central-1')
+                ->end()
+                ->scalarNode('version')
+                    ->defaultValue('latest')
                 ->end()
                 ->scalarNode('default_parameters_file')
                     ->defaultNull()
@@ -68,7 +72,14 @@ class Configuration implements ConfigurationInterface
                                 ->values($services)
                                 ->defaultValue('aws')
                             ->end()
+                            ->enumNode('version')
+                                ->values($availableVersions)
+                            ->end()
                             ->variableNode('config')
+                            ->end()
+                            ->scalarNode('region')
+                            ->end()
+                            ->scalarNode('s3_stream_wrapper')
                             ->end()
                             ->scalarNode('default_parameters_file')
                             ->end()

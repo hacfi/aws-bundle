@@ -16,9 +16,6 @@ use Symfony\Component\DependencyInjection\Loader\YamlFileLoader;
 use Symfony\Component\DependencyInjection\Reference;
 use Symfony\Component\HttpKernel\DependencyInjection\ConfigurableExtension;
 
-use Aws\Common\Aws;
-
-
 class hacfiAwsExtension extends ConfigurableExtension
 {
     private $alias;
@@ -33,8 +30,6 @@ class hacfiAwsExtension extends ConfigurableExtension
     public function __construct($alias)
     {
         $this->alias = $alias;
-
-        $this->awsConfig = Aws::factory()->getConfig();
     }
 
     /**
@@ -50,7 +45,7 @@ class hacfiAwsExtension extends ConfigurableExtension
      */
     public function getConfiguration(array $config, ContainerBuilder $container)
     {
-        return new Configuration($this->getAlias(), $this->awsConfig);
+        return new Configuration($this->getAlias());
     }
 
     /**
@@ -69,39 +64,27 @@ class hacfiAwsExtension extends ConfigurableExtension
             ;
         }
 
+        $s3StreamWrappers = [];
+
         foreach ($mergedConfig['services'] as $serviceId => $config) {
-            foreach (['config', 'resolve_parameters'] as $configKey) {
+            foreach (['config', 'region', 'resolve_parameters', 'version'] as $configKey) {
                 if (!isset($config[$configKey])) {
                     $config[$configKey] = $mergedConfig[$configKey];
                 }
             }
 
-            $serviceClass = $this->getServiceClass($config['client']);
-
-            $definition = new Definition($serviceClass);
-
-            if ($config['client'] !== 'aws' && is_string($config['config'])) {
-                $awsClass = $this->getServiceClass('aws');
-                $factoryDefinition = new Definition($awsClass);
-                $factoryDefinition
-                    ->setFactory([$awsClass, 'factory'])
-                    ->setArguments([$config['config']])
-                ;
-                $container->setDefinition($serviceId.'_factory', $factoryDefinition);
-
-                $definition
-                    ->setFactory([new Reference($serviceId.'_factory'), 'get'])
-                    ->setArguments([$config['client']])
-                ;
-            } else {
-                $definition
-                    ->setFactory([$serviceClass, 'factory'])
-                    ->setArguments([$config['config']])
-                ;
+            foreach (['region', 'version'] as $configKey) {
+                if (!isset($config['config'][$configKey])) {
+                    $config['config'][$configKey] = $config[$configKey];
+                }
             }
 
+            $serviceClass = $this->getServiceClass($config['client']);
+
+            $definition = new Definition($serviceClass, [$config['config']]);
+
             if ($config['resolve_parameters']) {
-                $definition->addMethodCall('addSubscriber', [new Reference('hacfi_aws.event_listener.resolve_parameters_listener')]);
+                //$definition->addMethodCall('addSubscriber', [new Reference('hacfi_aws.event_listener.resolve_parameters_listener')]);
             }
 
             if (isset($config['default_parameters_file']) && $config['default_parameters_file']) {
@@ -111,24 +94,51 @@ class hacfiAwsExtension extends ConfigurableExtension
                     ->addMethodCall('setParametersFile', [$config['default_parameters_file']])
                 ;
 
-                $container->setDefinition($serviceId.'_listener', $listenerDefinition);
+                $container->setDefinition($serviceId . '_listener', $listenerDefinition);
 
-                $definition->addMethodCall('addSubscriber', [new Reference($serviceId.'_listener')]);
+                $definition->addMethodCall('addSubscriber', [new Reference($serviceId . '_listener')]);
 
             } elseif ($mergedConfig['default_parameters_file']) {
                 $definition->addMethodCall('addSubscriber', [new Reference('hacfi_aws.event_listener.default_parameters_listener')]);
             }
 
             $container->setDefinition($serviceId, $definition);
+
+            if (isset($config['s3_stream_wrapper'])) {
+                if ($config['client'] !== 's3') {
+                    throw new \LogicException(sprintf('Cannot register %s client as a S3 stream wrapper', $config['client']));
+                }
+
+                $protocol = is_string($config['s3_stream_wrapper']) ? $config['s3_stream_wrapper'] : 's3';
+
+                if (isset($s3StreamWrappers[$protocol])) {
+                    throw new \Exception(sprintf('Stream wrapper protocol %s already in use', $protocol));
+                }
+
+                $s3StreamWrappers[$protocol] = $serviceId;
+            }
+        }
+
+        if (!empty($s3StreamWrappers)) {
+            $s3StreamWrapperRegistry = new Definition('hacfi\\AwsBundle\\S3\\StreamWrapperRegistry', [$s3StreamWrappers]);
+            $s3StreamWrapperRegistry->addMethodCall('setContainer', [new Reference('service_container')]);
+
+            $container->setDefinition('hacfi_aws.s3_stream_wrapper_registry', $s3StreamWrapperRegistry);
         }
     }
 
     private function getServiceClass($client)
     {
         if ($client === 'aws') {
-            return 'Aws\Common\Aws';
+            return 'Aws\\Sdk';
         }
 
-        return $this->awsConfig[$client]['class'];
+        if ($this->awsConfig === null) {
+            $this->awsConfig = \Aws\manifest();
+        }
+
+        $namespace = $this->awsConfig[$client]['namespace'];
+
+        return $client = 'Aws\\' . $namespace . '\\' . $namespace . 'Client';
     }
 }
